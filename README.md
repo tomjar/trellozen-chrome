@@ -1,6 +1,6 @@
 # trellozen
 Available for install at 
-https://addons.mozilla.org/en-US/firefox/addon/trellozen
+?
 
 * Tired of that default blue background? Set a custom background image for every Trello Board.
 * Allows you to override a custom background for the Trello board.
@@ -10,16 +10,16 @@ https://addons.mozilla.org/en-US/firefox/addon/trellozen
 
 Download the correct Web Extension for the browser you wish to use,
 
-* Debugging in Firefox: 
-   1. To debug in Firefox, navigate to about:debugging, check "Enable add-on debugging"
-   2. "Load Temporary Add-on", in the file explorer open the manifest.json file.
-   3. The Web Extension is now loaded temporarily until you close your browser.
+* Debugging in Chrome: 
+   1. To debug in Chrome, go to Settings -> Extensions
+   2. Be sure to enable "Developer Mode" -> Load Unpacked -> choose the root folder of the web extension
+   3. The Web Extension is now loaded temporarily
    4. Log into https://trello.com and try adding a few cards and adding (.5) to some of the titles of the cards.
-   5. To calculate, select the blue smiley icon then select the button to calculate the totals of all cards present on the Trello board.
+   5. While on a Trello board the temple icon will apear allowing you to set the background to a valid URL.
 
 ### Prerequisites
 
-Firefox
+Chrome
 
 ## Built With
 * [Visual Studio Code](https://code.visualstudio.com/)
