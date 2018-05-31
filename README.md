@@ -26,6 +26,7 @@ Chrome
 * [Brackets](https://brackets.io/)
 * [JQuery](https://jquery.com/)
 * [RegexPal](http://www.regexpal.com/)
+* [Bootstrap](https://getbootstrap.com/)
 
 ## Authors
 
