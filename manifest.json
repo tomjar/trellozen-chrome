@@ -3,7 +3,7 @@
     "name": "trellozen",
     "version": "1.0.0",
 
-    "description": "Allows you to also set a custom background to each individual Trello Board using any available image URL from the web.",
+    "description": "Set a custom background to each individual Trello Board using any available image URL from the web.",
 
     "icons": {
         "48": "icons/glyphtemple-48.png",
