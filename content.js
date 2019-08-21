@@ -19,18 +19,19 @@ function setBoardBackground(url) {
     'use strict';
     if (url !== '') {
         // outLog(sendisemptymessage.response)
-        document.querySelector('#classic-body').style.background = '#000 url(' + url + ') no-repeat';
-        document.querySelector('#classic-body').style.backgroundSize = 'cover';
+        document.querySelector('#trello-root').style.background = '#000 url(' + url + ') no-repeat';
+        document.querySelector('#trello-root').style.backgroundSize = 'cover';
     }
 }
 
 /**
  * This function sets the trello board tiles image links on the left area of the trello website. Iterates over the 
  * elements until a matching board id is found and sets the image, then exits the loop.
+ * BROKEN!!! no longer works Trello is doing something weird with their div class names! - Aug 21 2019
  */
 function setBoardTiles() {
     'use strict';
-    chrome.storage.local.get("backgroundsBoardList", function(items) {
+    chrome.storage.local.get("backgroundsBoardList", function (items) {
         var patt = new RegExp(/\/b\/([\d\w]+)\/[\S]+/i);
         var compactBoardTilesList = document.querySelectorAll('li.compact-board-tile a.js-open-board');
 
@@ -60,7 +61,7 @@ function setBoardTiles() {
  * the pages do not entirely reload each time so this method will only be called once per trello session unless the user refreshes
  * the page of course.
  */
-$(document).ready(function() {
+$(document).ready(function () {
     setBoardTiles();
 });
 
@@ -72,8 +73,8 @@ $(document).ready(function() {
 function getAndSetTheBackgroundImage() {
     'use strict';
     var url = window.location.href;
-    chrome.runtime.sendMessage({ action: "parseboardid", obj: url }, function(sendparseid) {
-        chrome.storage.local.get("backgroundsBoardList", function(items) {
+    chrome.runtime.sendMessage({ action: "parseboardid", obj: url }, function (sendparseid) {
+        chrome.storage.local.get("backgroundsBoardList", function (items) {
             for (var i = 0; i < items.backgroundsBoardList.length; i++) {
                 if (items.backgroundsBoardList[i].boardid.toLowerCase() === sendparseid.response.toLowerCase()) {
                     if (items.backgroundsBoardList[i].url !== '') {

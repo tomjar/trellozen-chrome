@@ -43,7 +43,7 @@ function inTheTrelloDomain(url, callback) {
  */
 function showTrelloZen(tab) {
     'use strict';
-    inTheTrelloDomain(tab.url, function() {
+    inTheTrelloDomain(tab.url, function () {
         chrome.pageAction.show(tab.id);
     });
 }
@@ -53,10 +53,10 @@ function showTrelloZen(tab) {
  * constantly checking if the array had been initialized i have since made so we only have to check in one area.
  */
 function initStorage() {
-    chrome.storage.local.get("backgroundsBoardList", function(items) {
+    chrome.storage.local.get("backgroundsBoardList", function (items) {
         if (Array.isArray(items.backgroundsBoardList) === false) {
             items.backgroundsBoardList = [];
-            chrome.storage.local.set({ backgroundsBoardList: items.backgroundsBoardList }, function() {
+            chrome.storage.local.set({ backgroundsBoardList: items.backgroundsBoardList }, function () {
                 console.log('The storage array has been initialized.');
             });
         }
