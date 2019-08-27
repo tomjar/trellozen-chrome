@@ -1,10 +1,42 @@
 /*jslint indent: 2 */
-/*global chrome, document, setTimeout, console*/
+/*global browser, document, setTimeout, console*/
+
+function handleError(error) {
+    var tempErrObj = { type: "ERROR", message: error };
+    console.log(tempErrObj);
+}
+
+function outLog(obj) {
+    var tempObj = { type: "LOG", logged: obj };
+    console.log(tempObj);
+}
+
+chrome.runtime.onInstalled.addListener(function () {
+    chrome.storage.local.get(["backgroundsBoardList"],
+        function (item) {
+            if (typeof item.backgroundsBoardList === 'undefined') {
+                chrome.storage.local.set({ backgroundsBoardList: [] }, function () {
+                    console.log('The local storage array has been initialized successfully.');
+                });
+            }
+        });
+    chrome.declarativeContent.onPageChanged.removeRules(undefined, function () {
+        chrome.declarativeContent.onPageChanged.addRules([{
+            conditions: [new chrome.declarativeContent.PageStateMatcher({
+                pageUrl: { hostEquals: 'trello.com' },
+            })
+            ],
+            actions: [new chrome.declarativeContent.ShowPageAction()]
+        }]);
+    });
+});
+
 
 /**
  * This function retrieves the trello board id from the url provided.
- * @param {*} url the browsers current trello board url
- * @param {*} callback the send response is a callback function that sends back the boardid
+ * 
+ * @param {String} url the browsers current trello board url
+ * @param {function} callback the send response is a callback function that sends back the boardid
  */
 function parseTrelloBoardId(url, callback) {
     'use strict';
@@ -16,50 +48,51 @@ function parseTrelloBoardId(url, callback) {
     } else {
         trelloBoardId = '';
     }
-
-    callback({ response: trelloBoardId.toString() });
+    callback(trelloBoardId.toString());
 }
 
 /**
- * This function determines if we are currently in the correct trello domain and area, 
- * this helps control when to show the page action icon
- * i am aware of settings that could be set for my background scrip to control when it is ran but
- * I do not believe this is alos the case for Chrome.
- * @param {*} url the current browsers current url
- * @param {*} callback a callback function to run if we are indeed in the trello domain.
+ * TODO
+ * 
+ * @param {Number} tabId 
+ * @param {String} boardId 
+ * @param {String} css 
  */
-function inTheTrelloDomain(url, callback) {
-    'use strict';
-    var patt = new RegExp(/https:\/\/*.trello.com\/b\//i),
-        match = patt.exec(url);
-    if (match !== null) {
-        callback();
-    }
-}
+function insertBoardCss(tabId, boardId, css) {
+    chrome.storage.local.get("backgroundsBoardList", function (items) {
+        let boardIndex = items.backgroundsBoardList.findIndex(function (element) {
+            return element.boardid.toString() === boardId.toString();
+        });
 
-/**
- * This function determines whether or not we should show the page action.
- * @param {*} tab the current tab object
- */
-function showTrelloZen(tab) {
-    'use strict';
-    inTheTrelloDomain(tab.url, function () {
-        chrome.pageAction.show(tab.id);
+        if (boardIndex !== -1) {
+            chrome.tabs.insertCSS(tabId, { code: css });
+            setBoardTiles(tabId);
+        }
     });
 }
 
 /**
- * This function initializes the storage for the board image urls. Previously I was
- * constantly checking if the array had been initialized i have since made so we only have to check in one area.
+ * TODO
+ * 
+ * @param {Number} tabId 
+ * @param {Array} cssArr 
  */
-function initStorage() {
-    chrome.storage.local.get("backgroundsBoardList", function (items) {
-        if (Array.isArray(items.backgroundsBoardList) === false) {
-            items.backgroundsBoardList = [];
-            chrome.storage.local.set({ backgroundsBoardList: items.backgroundsBoardList }, function () {
-                console.log('The storage array has been initialized.');
-            });
-        }
+function removeBoardCss(tabId, cssArr) {
+    for (let i = 0; i < cssArr.length; i++) {
+        // TODO: not supported in Chrome????
+        // chrome.tabs.removeCSS(tabId, { code: cssArr[i] });
+    }
+}
+
+/**
+ * TODO
+ * 
+ * @param {Number} tabId
+ */
+function setBoardTiles(tabId) {
+    'use strict';
+    chrome.tabs.sendMessage(tabId, { action: "SET_BOARD_MENU_TILES" }, function (response) {
+        // console.log(response);
     });
 }
 
@@ -67,40 +100,63 @@ function initStorage() {
  * This function is my handler function for the user's tab url is changed, due to the
  * way some websites behave like Trello for example, you cannot rely on the document ready function to run code
  * each time the user clicks something. This allows better control execution of the background image and board tiles.
- * @param {*} tabId the current tabid
- * @param {*} changeInfo a object with some helpful attributes/values
- * @param {*} tab the current tab object
+ * @param {Number} tabId the current tabid
+ * @param {Object} changeInfo a object with some helpful attributes/values
+ * @param {Object} tab the current tab object
  */
 function handleTabOnUpdated(tabId, changeInfo, tab) {
     'use strict';
-    if (changeInfo.status === 'complete') {
-        showTrelloZen(tab);
-        initStorage();
-        var actionObj = { action: "getAndSetTheBackgroundImage" },
-            action2Obj = { action: "setBoardTiles" };
+    parseTrelloBoardId(tab.url, function (parsedBoardid) {
+        chrome.storage.local.get("backgroundsBoardList", function (items) {
 
-        chrome.tabs.sendMessage(tabId, actionObj);
-        chrome.tabs.sendMessage(tabId, action2Obj);
-    }
+            if (changeInfo.status === 'complete') {
+                let board = items.backgroundsBoardList.find(function (element) {
+                    return element.boardid.toString() === parsedBoardid.toString();
+                }),
+                    boardCssArr = items.backgroundsBoardList.map(function (element) {
+                        return element.css;
+                    });
+
+                removeBoardCss(tabId, boardCssArr);
+
+                if (typeof board !== 'undefined') {
+                    insertBoardCss(tabId, board.boardid, board.css);
+                }
+            }
+        });
+    });
 }
 
-// assigning the function as a listener
-chrome.tabs.onUpdated.addListener(handleTabOnUpdated);
+if (chrome.tabs.onUpdated.hasListener(handleTabOnUpdated) === false) {
+    chrome.tabs.onUpdated.addListener(handleTabOnUpdated);
+}
 
 /**
  * This function receives messages from content.js
  * Recieves a object with a action, the action determines what happens.
- * @param request: a object containing a action and other values.
- * @param {?} sender
- * @param sendResponse: a value that is consumed by the requestee.
+ * @param {Object} request: a object containing a action and other values.
+ * @param {Object} sender
+ * @param {Object} sendResponse: a value that is consumed by the requestee.
  * @return void
  */
 function handleMessage_background(request, sender, sendResponse) {
     'use strict';
-    if (request.action === 'parseboardid') {
-        parseTrelloBoardId(request.obj, sendResponse);
+    switch (request.action) {
+        case 'PARSE_BOARD_ID': {
+            parseTrelloBoardId(request.obj, sendResponse);
+            break;
+        }
+        case 'INSERT_CSS': {
+            insertBoardCss(request.tabId, request.boardid, request.css);
+            break;
+        }
+        case 'REMOVE_CSS': {
+            removeBoardCss(request.tabId, request.cssArr);
+            break;
+        }
     }
 }
 
-// assigning the function as a listener
-chrome.runtime.onMessage.addListener(handleMessage_background);
+if (chrome.runtime.onMessage.hasListener(handleMessage_background) === false) {
+    chrome.runtime.onMessage.addListener(handleMessage_background);
+}

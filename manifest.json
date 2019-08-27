@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "trellozen",
-    "version": "1.0.1",
+    "version": "2.0.0",
     "description": "Set a custom background to each individual Trello Board using any available image URL from the web.",
     "icons": {
         "48": "icons/trellozen-48.png",
@@ -10,17 +10,20 @@
     "content_scripts": [
         {
             "matches": [
-                "https://*.trello.com/*"
+                "https://*.trello.com/b/*"
             ],
             "js": [
-                "lib/jquery-3.3.1.js",
                 "content.js"
             ]
         }
     ],
     "page_action": {
         "browser_style": true,
-        "default_icon": "icons/trellozen-32.png",
+        "default_icon": {
+            "16": "icons/trellozen-16.png",
+            "24": "icons/trellozen-24.png",
+            "32": "icons/trellozen-32.png"
+        },
         "default_title": "Change this Trello boards background.",
         "default_popup": "popup/page-action-popup.html"
     },
@@ -30,8 +33,10 @@
         ]
     },
     "permissions": [
+        "https://*.trello.com/b/*",
         "activeTab",
         "tabs",
-        "storage"
+        "storage",
+        "declarativeContent"
     ]
 }
