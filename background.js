@@ -65,8 +65,9 @@ function insertBoardCss(tabId, boardId, css) {
         });
 
         if (boardIndex !== -1) {
-            chrome.tabs.insertCSS(tabId, { code: css });
-            setBoardTiles(tabId);
+            chrome.tabs.sendMessage(tabId, { action: "SET_BOARD_MENU_TILES" }, function (response) {
+                chrome.tabs.insertCSS(tabId, { code: css });
+            });
         }
     });
 }
@@ -81,19 +82,8 @@ function removeBoardCss(tabId, cssArr) {
     for (let i = 0; i < cssArr.length; i++) {
         // TODO: not supported in Chrome????
         // chrome.tabs.removeCSS(tabId, { code: cssArr[i] });
+        // https://stackoverflow.com/questions/18533820/how-do-i-remove-an-injected-css-file
     }
-}
-
-/**
- * TODO
- * 
- * @param {Number} tabId
- */
-function setBoardTiles(tabId) {
-    'use strict';
-    chrome.tabs.sendMessage(tabId, { action: "SET_BOARD_MENU_TILES" }, function (response) {
-        // console.log(response);
-    });
 }
 
 /**
@@ -143,7 +133,7 @@ function handleMessage_background(request, sender, sendResponse) {
     'use strict';
     switch (request.action) {
         case 'PARSE_BOARD_ID': {
-            parseTrelloBoardId(request.obj, sendResponse);
+            parseTrelloBoardId(request.url, sendResponse);
             break;
         }
         case 'INSERT_CSS': {

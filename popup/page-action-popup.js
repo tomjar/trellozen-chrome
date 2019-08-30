@@ -50,47 +50,63 @@ function saveBackground(url) {
     // getting the active tab
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
         // getting the trello board id out of the url
-        chrome.runtime.sendMessage({ action: "PARSE_BOARD_ID", obj: tabs[0].url }, function (parsedBoardId) {
-            if (parsedBoardId === '') {
-                // no parsed trello boardId, just return
-                handleError('No Trello boardId was parsed!');
-            } else {
-                // getting the storage array and adding the new bg image for this trello board
-                chrome.storage.local.get("backgroundsBoardList", function (items) {
-                    let boardBackgroundUrlObj =
-                    {
-                        url: url,
-                        boardid: parsedBoardId,
-                        css: `#trello-root { background: rgb(0, 0, 0) url("${url}") no-repeat scroll 0% 0% / 100% auto !important;}`,
-                        active: true
-                    },
-                        cssArr = items.backgroundsBoardList.map(function (element) {
-                            return element.css;
-                        });
+        chrome.runtime.sendMessage(
+            {
+                action: "PARSE_BOARD_ID",
+                url: tabs[0].url
+            }, function (parsedBoardId) {
+                if (parsedBoardId === '') {
+                    // no parsed trello boardId, just return
+                    handleError('No Trello boardId was parsed!');
+                } else {
+                    // getting the storage array and adding the new bg image for this trello board
+                    chrome.storage.local.get("backgroundsBoardList", function (items) {
+                        let boardBackgroundUrlObj =
+                        {
+                            url: url,
+                            boardid: parsedBoardId,
+                            css: `#trello-root { background: rgb(0, 0, 0) url("${url}") no-repeat scroll 0% 0% / 100% auto !important;}`,
+                            active: true
+                        },
+                            cssArr = items.backgroundsBoardList.map(function (element) {
+                                return element.css;
+                            });
 
-                    if (boardBackgroundUrlObj.url === '') {
-                        handleError('No image url was provided! Url was not saved for this board.');
-                    } else {
-
-                        let currentTzBoardBgIndex = items.backgroundsBoardList.findIndex(function (element) {
-                            return element.boardid === parsedBoardId;
-                        });
-
-                        if (currentTzBoardBgIndex === -1) {
-                            items.backgroundsBoardList.push(boardBackgroundUrlObj);
+                        if (boardBackgroundUrlObj.url === '') {
+                            handleError('No image url was provided! Url was not saved for this board.');
                         } else {
-                            items.backgroundsBoardList[currentTzBoardBgIndex] = boardBackgroundUrlObj;
-                            chrome.runtime.sendMessage({ action: "REMOVE_CSS", boardid: boardBackgroundUrlObj.boardid, cssArr: cssArr, tabId: tabs[0].id });
+
+                            let currentTzBoardBgIndex = items.backgroundsBoardList.findIndex(function (element) {
+                                return element.boardid === parsedBoardId;
+                            });
+
+                            if (currentTzBoardBgIndex === -1) {
+                                items.backgroundsBoardList.push(boardBackgroundUrlObj);
+                            } else {
+                                items.backgroundsBoardList[currentTzBoardBgIndex] = boardBackgroundUrlObj;
+                                chrome.runtime.sendMessage(
+                                    {
+                                        action: "REMOVE_CSS",
+                                        boardid: boardBackgroundUrlObj.boardid,
+                                        cssArr: cssArr,
+                                        tabId: tabs[0].id
+                                    });
+                            }
+
+                            console.log(items.backgroundsBoardList);
+
+                            chrome.storage.local.set({ backgroundsBoardList: items.backgroundsBoardList }, function () {
+                                chrome.runtime.sendMessage(
+                                    {
+                                        action: "INSERT_CSS",
+                                        boardid: boardBackgroundUrlObj.boardid,
+                                        css: boardBackgroundUrlObj.css,
+                                        tabId: tabs[0].id
+                                    });
+                            });
                         }
-
-                        console.log(items.backgroundsBoardList);
-
-                        chrome.storage.local.set({ backgroundsBoardList: items.backgroundsBoardList }, function () {
-                            chrome.runtime.sendMessage({ action: "INSERT_CSS", boardid: boardBackgroundUrlObj.boardid, css: boardBackgroundUrlObj.css, tabId: tabs[0].id });
-                        });
-                    }
-                });
-            }
-        });
+                    });
+                }
+            });
     });
 }
