@@ -1,15 +1,5 @@
 /*jslint indent: 2 */
-/*global browser, document, setTimeout, console*/
-
-function handleError(error) {
-    var tempErrObj = { type: "ERROR", message: error };
-    console.log(tempErrObj);
-}
-
-function outLog(obj) {
-    var tempObj = { type: "LOG", logged: obj };
-    console.log(tempObj);
-}
+/*global chrome, console*/
 
 chrome.runtime.onInstalled.addListener(function () {
     chrome.storage.local.get(["backgroundsBoardList"],
@@ -52,41 +42,6 @@ function parseTrelloBoardId(url, callback) {
 }
 
 /**
- * TODO
- * 
- * @param {Number} tabId 
- * @param {String} boardId 
- * @param {String} css 
- */
-function insertBoardCss(tabId, boardId, css) {
-    chrome.storage.local.get("backgroundsBoardList", function (items) {
-        let boardIndex = items.backgroundsBoardList.findIndex(function (element) {
-            return element.boardid.toString() === boardId.toString();
-        });
-
-        if (boardIndex !== -1) {
-            chrome.tabs.sendMessage(tabId, { action: "SET_BOARD_MENU_TILES" }, function (response) {
-                chrome.tabs.insertCSS(tabId, { code: css });
-            });
-        }
-    });
-}
-
-/**
- * TODO
- * 
- * @param {Number} tabId 
- * @param {Array} cssArr 
- */
-function removeBoardCss(tabId, cssArr) {
-    for (let i = 0; i < cssArr.length; i++) {
-        // TODO: not supported in Chrome????
-        // chrome.tabs.removeCSS(tabId, { code: cssArr[i] });
-        // https://stackoverflow.com/questions/18533820/how-do-i-remove-an-injected-css-file
-    }
-}
-
-/**
  * This function is my handler function for the user's tab url is changed, due to the
  * way some websites behave like Trello for example, you cannot rely on the document ready function to run code
  * each time the user clicks something. This allows better control execution of the background image and board tiles.
@@ -100,18 +55,12 @@ function handleTabOnUpdated(tabId, changeInfo, tab) {
         chrome.storage.local.get("backgroundsBoardList", function (items) {
 
             if (changeInfo.status === 'complete') {
-                let board = items.backgroundsBoardList.find(function (element) {
-                    return element.boardid.toString() === parsedBoardid.toString();
-                }),
-                    boardCssArr = items.backgroundsBoardList.map(function (element) {
-                        return element.css;
+                chrome.tabs.sendMessage(tabId,
+                    {
+                        action: "REFRESH_CSS",
+                        boardId: parsedBoardid,
+                        tabId: tabId
                     });
-
-                removeBoardCss(tabId, boardCssArr);
-
-                if (typeof board !== 'undefined') {
-                    insertBoardCss(tabId, board.boardid, board.css);
-                }
             }
         });
     });
@@ -136,12 +85,13 @@ function handleMessage_background(request, sender, sendResponse) {
             parseTrelloBoardId(request.url, sendResponse);
             break;
         }
-        case 'INSERT_CSS': {
-            insertBoardCss(request.tabId, request.boardid, request.css);
-            break;
-        }
-        case 'REMOVE_CSS': {
-            removeBoardCss(request.tabId, request.cssArr);
+        case 'INJECT_CSS_RULES': {
+            chrome.tabs.insertCSS(request.tabId,
+                {
+                    code: `.${request.cssClass} { background-image: url("${request.bgUrl}") no-repeat scroll 0% 0% / 100% auto !important;}`
+                }, function () {
+                });
+            sendResponse({});
             break;
         }
     }

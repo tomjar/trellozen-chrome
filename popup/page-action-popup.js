@@ -1,27 +1,22 @@
-function handleError(error) {
-    var errObj = { type: "ERROR", logged: error };
-    console.log(errObj);
-}
 
 // loading settings from local storage and setting the popup elements values
 window.onload = function () {
     'use strict';
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+        chrome.runtime.sendMessage({ action: "PARSE_BOARD_ID", url: tabs[0].url },
+            function (parsedBoardId) {
+                chrome.storage.local.get("backgroundsBoardList", function (items) {
+                    if (items.backgroundsBoardList.length > 0) {
+                        let board = items.backgroundsBoardList.find(function (element) {
+                            return element.id.toString() === parsedBoardId.toString();
+                        });
 
-        chrome.runtime.sendMessage({ action: "PARSE_BOARD_ID", obj: tabs[0].url }, function (parsedBoardId) {
-            chrome.storage.local.get("backgroundsBoardList", function (items) {
-
-                let board = items.backgroundsBoardList.find(function (element) {
-                    return element.boardid === parsedBoardId;
+                        if (typeof board !== 'undefined') {
+                            document.getElementById('textTrelloBackgroundUrl').value = board.bgUrl;
+                        }
+                    }
                 });
-
-                if (typeof board !== 'undefined') {
-                    document.getElementById('textTrelloBackgroundUrl').value = board.url;
-                } else {
-                    handleError('the trello board was not found in local storage');
-                }
             });
-        });
     });
 };
 
@@ -45,7 +40,7 @@ document.addEventListener("click", function (event) {
  * 
  * @param {object} element the button that triggered the click
  */
-function saveBackground(url) {
+function saveBackground(bgUrl) {
     'use strict';
     // getting the active tab
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
@@ -54,57 +49,40 @@ function saveBackground(url) {
             {
                 action: "PARSE_BOARD_ID",
                 url: tabs[0].url
-            }, function (parsedBoardId) {
-                if (parsedBoardId === '') {
-                    // no parsed trello boardId, just return
-                    handleError('No Trello boardId was parsed!');
-                } else {
+            }, function (boardId) {
+                let isBoardIdValid = boardId !== '',
+                    isBgUrlValid = bgUrl !== '';
+
+                if (isBoardIdValid && isBgUrlValid) {
                     // getting the storage array and adding the new bg image for this trello board
                     chrome.storage.local.get("backgroundsBoardList", function (items) {
-                        let boardBackgroundUrlObj =
+                        let boardStorageObj =
                         {
-                            url: url,
-                            boardid: parsedBoardId,
-                            css: `#trello-root { background: rgb(0, 0, 0) url("${url}") no-repeat scroll 0% 0% / 100% auto !important;}`,
-                            active: true
-                        },
-                            cssArr = items.backgroundsBoardList.map(function (element) {
-                                return element.css;
-                            });
+                            id: boardId,
+                            bgUrl: bgUrl
+                        };
 
-                        if (boardBackgroundUrlObj.url === '') {
-                            handleError('No image url was provided! Url was not saved for this board.');
+                        let bgBoardIndex = items.backgroundsBoardList.findIndex(function (element) {
+                            return element.id === boardId;
+                        });
+
+                        if (bgBoardIndex === -1) {
+                            items.backgroundsBoardList.push(boardStorageObj);
                         } else {
-
-                            let currentTzBoardBgIndex = items.backgroundsBoardList.findIndex(function (element) {
-                                return element.boardid === parsedBoardId;
-                            });
-
-                            if (currentTzBoardBgIndex === -1) {
-                                items.backgroundsBoardList.push(boardBackgroundUrlObj);
-                            } else {
-                                items.backgroundsBoardList[currentTzBoardBgIndex] = boardBackgroundUrlObj;
-                                chrome.runtime.sendMessage(
-                                    {
-                                        action: "REMOVE_CSS",
-                                        boardid: boardBackgroundUrlObj.boardid,
-                                        cssArr: cssArr,
-                                        tabId: tabs[0].id
-                                    });
-                            }
-
-                            console.log(items.backgroundsBoardList);
-
-                            chrome.storage.local.set({ backgroundsBoardList: items.backgroundsBoardList }, function () {
-                                chrome.runtime.sendMessage(
-                                    {
-                                        action: "INSERT_CSS",
-                                        boardid: boardBackgroundUrlObj.boardid,
-                                        css: boardBackgroundUrlObj.css,
-                                        tabId: tabs[0].id
-                                    });
-                            });
+                            items.backgroundsBoardList[bgBoardIndex] = boardStorageObj;
                         }
+
+                        console.log(items.backgroundsBoardList);
+
+                        chrome.storage.local.set({ backgroundsBoardList: items.backgroundsBoardList }, function () {
+                            chrome.tabs.sendMessage(tabs[0].id,
+                                {
+                                    action: "REFRESH_CSS",
+                                    boardid: boardId,
+                                    tabId: tabs[0].id
+                                });
+                        });
+
                     });
                 }
             });
